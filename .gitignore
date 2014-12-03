@@ -219,3 +219,7 @@ Linker/
 List/
 Obj/
 *.DBK
+*.cci
+*.hci
+*.c~
+termo.txt

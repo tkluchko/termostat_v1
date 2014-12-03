@@ -1,0 +1,99 @@
+/*
+  CodeVisionAVR C Compiler
+*/
+
+#include <delay.h>
+#include <ds18x20_v3.h>
+
+//-------------------------------------------------
+struct __ds18x20_scratch_pad_struct __ds18x20_scratch_pad;
+//-------------------------------------------------
+
+//-------------------------------------------------
+// temp. conversion time [ms] depending on the resolution
+static flash int conv_delay[4]={100,200,400,800};
+// valid temp. bit mask depending on the resolution
+static flash unsigned bit_mask[4]={0xFFF8,0xFFFC,0xFFFE,0xFFFF};
+//-------------------------------------------------
+
+//-------------------------------------------------                     
+unsigned char ds18x20_select(unsigned char *addr){
+	unsigned char i;
+	if (w1_init()==0) return 0;
+	if (addr) {
+		#asm("cli")
+		w1_write(0x55);
+		#asm("sei")
+		i=0;
+		do {
+			#asm("cli")
+			w1_write(*(addr++));
+			#asm("sei")
+		} while (++i<8);
+	} else {
+		#asm("cli")
+		w1_write(0xcc);
+		#asm("sei")
+	}
+	return 1;
+}
+//-------------------------------------------------
+
+//-------------------------------------------------
+unsigned char ds18x20_read_spd(unsigned char *addr){
+	unsigned char i;
+	unsigned char *p;
+
+	if (ds18x20_select(addr)==0) return 0;
+
+	#asm("cli")
+	w1_write(0xbe);
+	#asm("sei")
+
+	i=0;
+	p=(char *) &__ds18x20_scratch_pad;
+	do {
+		#asm("cli")
+		*(p++)=w1_read();
+		#asm("sei")
+	} while (++i<9);
+	return !w1_dow_crc8(&__ds18x20_scratch_pad,9);
+}
+//-------------------------------------------------
+
+
+//-------------------------------------------------
+int ds18x20_temperature(unsigned char *addr){
+	unsigned char resolution;
+	
+	if (ds18x20_select(addr)==0) return -9999;
+
+	if (addr[0] == DS18B20_FAMILY_CODE) {
+		resolution=(__ds18x20_scratch_pad.conf_register>>5) & 3;
+	}	
+
+	#asm("cli")
+	w1_write(0x44);
+	#asm("sei")
+
+	if (addr[0] == DS18S20_FAMILY_CODE) {
+		delay_ms(550);
+	}
+	if (addr[0] == DS18B20_FAMILY_CODE) {
+		delay_ms(conv_delay[resolution]);
+	}
+	
+	if (ds18x20_read_spd(addr)==0) return -9999;
+
+	#asm("cli")
+	w1_init();
+	#asm("sei")
+	
+	if (addr[0] == DS18S20_FAMILY_CODE) {	
+		return ((int)__ds18x20_scratch_pad.temp_msb<<8|__ds18x20_scratch_pad.temp_lsb)<<3;
+	}
+	if (addr[0] == DS18B20_FAMILY_CODE) {
+		return (*((int *) &__ds18x20_scratch_pad.temp_lsb) & bit_mask[resolution]);
+	}
+}
+//-------------------------------------------------
