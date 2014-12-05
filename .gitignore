@@ -219,7 +219,11 @@ Linker/
 List/
 Obj/
 *.DBK
+*.PWI
 *.cci
 *.hci
 *.c~
 termo.txt
+*.cbi
+*.cof
+*.fct
