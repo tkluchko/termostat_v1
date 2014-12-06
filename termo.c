@@ -1,10 +1,10 @@
 #asm
-.equ __w1_port=0x12
+.equ __w1_port=0xb
 .equ __w1_bit=7
 #endasm
 #include <1wire.h>
 #include <stdlib.h>
-#include <mega8.h>
+#include <mega88.h>
 #include <delay.h>
 
 #include "ds18x20_v3.h"  
@@ -182,7 +182,16 @@ void compareTemperature(void){
 
 void main(void) {
     // Declare your local variables here
-    unsigned int i;
+    unsigned int i; 
+    // Crystal Oscillator division factor: 1
+#pragma optsize-
+CLKPR=0x80;
+CLKPR=0x00;
+#ifdef _OPTIMIZE_SIZE_
+#pragma optsize+
+#endif
+
+
     // Input/Output Ports initialization
     // Port B initialization
     // Func7=In Func6=In Func5=In Func4=In Func3=In Func2=In Func1=In Func0=In 
@@ -205,8 +214,14 @@ void main(void) {
     // Timer/Counter 0 initialization
     // Clock source: System Clock
     // Clock value: Timer 0 Stopped
-    TCCR0=0x00;
+    // Mode: Normal top=0xFF
+    // OC0A output: Disconnected
+    // OC0B output: Disconnected
+    TCCR0A=0x00;
+    TCCR0B=0x00;
     TCNT0=0x00;
+    OCR0A=0x00;
+    OCR0B=0x00;
 
     // Timer/Counter 1 initialization
     // Clock source: System Clock
@@ -235,29 +250,44 @@ void main(void) {
     // Clock source: System Clock
     // Clock value: 62,500 kHz
     // Mode: Normal top=0xFF
-    // OC2 output: Disconnected
+    // OC2A output: Disconnected
+    // OC2B output: Disconnected
     ASSR=0x00;
-    TCCR2=0x05;
+    TCCR2A=0x00;
+    TCCR2B=0x05;
     TCNT2=0x00;
-    OCR2=0x00;
+    OCR2A=0x00;
+    OCR2B=0x00;
 
     // External Interrupt(s) initialization
     // INT0: Off
     // INT1: Off
-    MCUCR=0x00;
+    // Interrupt on any change on pins PCINT0-7: Off
+    // Interrupt on any change on pins PCINT8-14: Off
+    // Interrupt on any change on pins PCINT16-23: Off
+    EICRA=0x00;
+    EIMSK=0x00;
+    PCICR=0x00;
 
-    // Timer(s)/Counter(s) Interrupt(s) initialization
-    TIMSK=0x40;
+    // Timer/Counter 0 Interrupt(s) initialization
+    TIMSK0=0x00;
+
+    // Timer/Counter 1 Interrupt(s) initialization
+    TIMSK1=0x00;
+
+    // Timer/Counter 2 Interrupt(s) initialization
+    TIMSK2=0x01;
 
     // USART initialization
     // USART disabled
-    UCSRB=0x00;
+    UCSR0B=0x00;
 
     // Analog Comparator initialization
     // Analog Comparator: Off
     // Analog Comparator Input Capture by Timer/Counter 1: Off
     ACSR=0x80;
-    SFIOR=0x00;
+    ADCSRB=0x00;
+    DIDR1=0x00;
 
     // ADC initialization
     // ADC disabled
@@ -269,7 +299,7 @@ void main(void) {
 
     // TWI initialization
     // TWI disabled
-    TWCR=0x00; 
+    TWCR=0x00;
     
     PORTC.3 = DISABLE;
 
