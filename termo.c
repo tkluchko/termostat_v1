@@ -84,6 +84,20 @@ int temp2=3;
 
 bit outMode = DISABLE;
     
+// Timer1 overflow interrupt service routine
+interrupt [TIM1_OVF] void timer1_ovf_isr(void) {
+    if(mode == VIEW_TEMP){
+        if (PINC.0==0){ mode = SET_T1;}
+    } else if(mode == SET_T1){ 
+        if (PINC.0==0){ mode = SET_T2; delay_ms(DELAY);}
+        if (PINC.1==0){ temp1--; delay_ms(DELAY);}
+        if (PINC.2==0){ temp1++; delay_ms(DELAY);}
+    } else if(mode == SET_T2){
+        if (PINC.0==0){ mode = VIEW_TEMP; delay_ms(DELAY);}
+        if (PINC.1==0){ temp2--; delay_ms(DELAY);}
+        if (PINC.2==0){ temp2++; delay_ms(DELAY);} 
+    }
+}
 
 // Timer2 overflow interrupt service routine
 interrupt [TIM2_OVF] void timer2_ovf_isr(void) {
@@ -225,7 +239,7 @@ CLKPR=0x00;
 
     // Timer/Counter 1 initialization
     // Clock source: System Clock
-    // Clock value: Timer1 Stopped
+    // Clock value: 125,000 kHz
     // Mode: Normal top=0xFFFF
     // OC1A output: Discon.
     // OC1B output: Discon.
@@ -236,7 +250,7 @@ CLKPR=0x00;
     // Compare A Match Interrupt: Off
     // Compare B Match Interrupt: Off
     TCCR1A=0x00;
-    TCCR1B=0x00;
+    TCCR1B=0x03;
     TCNT1H=0x00;
     TCNT1L=0x00;
     ICR1H=0x00;
@@ -259,6 +273,7 @@ CLKPR=0x00;
     OCR2A=0x00;
     OCR2B=0x00;
 
+
     // External Interrupt(s) initialization
     // INT0: Off
     // INT1: Off
@@ -273,7 +288,7 @@ CLKPR=0x00;
     TIMSK0=0x00;
 
     // Timer/Counter 1 Interrupt(s) initialization
-    TIMSK1=0x00;
+    TIMSK1=0x01;
 
     // Timer/Counter 2 Interrupt(s) initialization
     TIMSK2=0x01;
@@ -300,6 +315,7 @@ CLKPR=0x00;
     // TWI initialization
     // TWI disabled
     TWCR=0x00;
+
     
     PORTC.3 = DISABLE;
 
@@ -330,8 +346,6 @@ CLKPR=0x00;
 
     while (1) {
         if(mode == VIEW_TEMP){
-            if (PINC.0==0){ mode = SET_T1; delay_ms(DELAY);}
-    
             if (ds18x20_devices >= 1) {
                 for (i=0;i<ds18x20_devices;i++) {
                     if (rom_code[i][0] == DS18B20_FAMILY_CODE){
@@ -345,17 +359,9 @@ CLKPR=0x00;
                 }
             }
         } else if(mode == SET_T1){ 
-            if (PINC.0==0){ mode = SET_T2; delay_ms(DELAY);}
-            if (PINC.1==0){ temp1--; delay_ms(DELAY);}
-            if (PINC.2==0){ temp1++; delay_ms(DELAY);}
             viewTermVar(TEMP_1);
-        
         } else if(mode == SET_T2){
-            if (PINC.0==0){ mode = VIEW_TEMP; delay_ms(DELAY);}
-            if (PINC.1==0){ temp2--; delay_ms(DELAY);}
-            if (PINC.2==0){ temp2++; delay_ms(DELAY);} 
             viewTermVar(TEMP_2);
-        
         }
     }
 }
