@@ -1,6 +1,6 @@
 #asm
 .equ __w1_port=0xb
-.equ __w1_bit=7
+.equ __w1_bit=5
 #endasm
 #include <1wire.h>
 #include <stdlib.h>
@@ -19,13 +19,13 @@ unsigned char ds18x20_devices;
 unsigned char rom_code[MAX_DS18x20][9];
 bit point = 0;
 
-#define A   1
-#define B   4
-#define C   16 
-#define D   64  
-#define E  128 
-#define F  2 
-#define G  8
+#define A   32
+#define B   8
+#define C   2 
+#define D   128  
+#define E  64
+#define F  16
+#define G  4
 
 #define ENABLE 1
 #define DISABLE 0
@@ -105,7 +105,7 @@ interrupt [TIM2_OVF] void timer2_ovf_isr(void) {
     PORTB=digit[digit_out[cur_dig]];
 
     if (point && cur_dig == 2) {
-        PORTB.5=0;
+        PORTB.0=0;
     }
     PORTD |= (1<<cur_dig);
 	cur_dig++;
