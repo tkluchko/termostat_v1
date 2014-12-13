@@ -3,7 +3,7 @@
 .equ __w1_bit=7
 #endasm
 #include <1wire.h>
-#include <stdlib.h>
+
 #include <mega8.h>
 #include <delay.h>
 
@@ -27,9 +27,6 @@ bit point = 0;
 #define F  2 
 #define G  8
 
-#define ENABLE 1
-#define DISABLE 0
-
 static flash unsigned char digit[] = {
     0b11111111 ^(A+B+C+D+E+F),   // 0
     0b11111111 ^(B+C),           // 1
@@ -51,38 +48,13 @@ static flash unsigned char digit[] = {
     0b11111111 ^(A+B+F+G),       // 17 - grad 
     0b11111111 ^(0),             // 18 - blank
     0b11111111 ^(C+E+G),         // n
-    0b11111111 ^(D+E+F+G),        // t
-    0b11111111 ^(A),        // upper
-    0b11111111 ^(D)        // lower
+    0b11111111 ^(D+E+F+G)        // t
 };
 
 #define MINUS 16
 #define SPACE 18
 #define F_SYMBOL 15
 
-#define VIEW_TEMP 0
-#define SET_T1 1
-#define SET_T2 2
-
-#define TEMP_1 0
-#define TEMP_2 1
-
-#define DELAY 250
-#define UPPER 21
-#define LOWER 22
-
-
-
-void viewTermVar(char showTemp);
-
-unsigned char mode = VIEW_TEMP;
-
-int currentTemp;
-
-int temp1=-3;
-int temp2=3;
-
-bit outMode = DISABLE;
     
 
 // Timer2 overflow interrupt service routine
@@ -100,32 +72,6 @@ interrupt [TIM2_OVF] void timer2_ovf_isr(void) {
     }
 }
 
-void viewTermVar(char showTemp){
-    unsigned char tmp, cur_t=0;
-    bit zero = 0;
-    point = DISABLE;
-
-    if(showTemp == TEMP_1){
-        if (temp1 < 0) zero = 1;
-        digit_out[cur_t++] = LOWER;
-        tmp = abs(temp1);
-       //tmp = abs(currentTemp);
-    }
-    if(showTemp == TEMP_2){
-        if (temp2 < 0) zero = 1;
-        digit_out[cur_t++] = UPPER;
-        tmp = abs(temp2);
-    }
-    if (tmp >= 10) {
-        digit_out[cur_t++] = zero ? MINUS :SPACE ; 
-        digit_out[cur_t++] = tmp / 10;    // десятки
-        digit_out[cur_t++] = tmp % 10;  // единицы
-    } else {
-        digit_out[cur_t++] = SPACE;
-        digit_out[cur_t++] = zero ? MINUS :SPACE ;
-        digit_out[cur_t++] = tmp;      // единицы
-    }
-}
 
 void view_term(void) {
     unsigned char celie, drob, tmp, cur_t=0;
@@ -148,14 +94,9 @@ void view_term(void) {
     celie = (unsigned char) celie_tmp;  // я люблю явное преведение типов
     if (celie > 99) return; // индикация температуры только до 100 гр.
     tmp=bin2bcd(celie); // вычислить целую часть
-    
-    currentTemp = celie;
-    if(drob >= 5) currentTemp++;
-    if(zero) currentTemp = 0 - currentTemp;
-
     // ***************************** конец расчета ************************************
 
-    point = ENABLE;
+    
     if (celie >= 10) {
         digit_out[cur_t++] = zero ? MINUS :SPACE ; 
         digit_out[cur_t++] = tmp >> 4;    // десятки
@@ -168,17 +109,7 @@ void view_term(void) {
     digit_out[cur_t++] = drob; // дробная часть
 }
 
-
-void compareTemperature(void){
-    if(outMode == ENABLE && currentTemp > temp2){
-        PORTC.3 = DISABLE;
-        outMode = DISABLE;
-    }
-    if(outMode == DISABLE && currentTemp < temp1){
-        PORTC.3 = ENABLE;
-        outMode = ENABLE;
-    }
-}
+// Declare your global variables here
 
 void main(void) {
     // Declare your local variables here
@@ -193,8 +124,8 @@ void main(void) {
     // Port C initialization
     // Func6=In Func5=In Func4=In Func3=In Func2=In Func1=In Func0=In 
     // State6=T State5=T State4=T State3=T State2=T State1=T State0=T 
-    PORTC=0xFF;
-    DDRC=0xFF;
+    PORTC=0x00;
+    DDRC=0x00;
 
     // Port D initialization
     // Func7=In Func6=In Func5=In Func4=In Func3=In Func2=In Func1=In Func0=In 
@@ -269,9 +200,7 @@ void main(void) {
 
     // TWI initialization
     // TWI disabled
-    TWCR=0x00; 
-    
-    PORTC.3 = DISABLE;
+    TWCR=0x00;
 
     w1_init();
 
@@ -285,47 +214,18 @@ void main(void) {
     digit_out[1] = SPACE;
     digit_out[2] = F_SYMBOL;
     digit_out[3] = ds18x20_devices;
-    
-    if (ds18x20_devices >= 1) {
-        for (i=0;i<ds18x20_devices;i++) {
-            if (rom_code[i][0] == DS18B20_FAMILY_CODE){
-                temperature=ds18x20_temperature(&rom_code[i][0]);
-            }
-                    
-            if (temperature!=-9999){
-                //do nothing 
-            }
-        }
-    }
 
+    point = 1;
     while (1) {
-        if(mode == VIEW_TEMP){
-            if (PINC.0==0){ mode = SET_T1; delay_ms(DELAY);}
-    
-            if (ds18x20_devices >= 1) {
-                for (i=0;i<ds18x20_devices;i++) {
-                    if (rom_code[i][0] == DS18B20_FAMILY_CODE){
-                        temperature=ds18x20_temperature(&rom_code[i][0]);
-                    }
-                    
-                    if (temperature!=-9999){
-                        view_term();
-                        compareTemperature();
-                    }
+        if (ds18x20_devices >= 1) {
+            for (i=0;i<ds18x20_devices;i++) {
+                if (rom_code[i][0] == DS18B20_FAMILY_CODE){
+                    temperature=ds18x20_temperature(&rom_code[i][0]);
                 }
+                
+                if (temperature!=-9999) view_term();
+                delay_ms(2000);
             }
-        } else if(mode == SET_T1){ 
-            if (PINC.0==0){ mode = SET_T2; delay_ms(DELAY);}
-            if (PINC.1==0){ temp1--; delay_ms(DELAY);}
-            if (PINC.2==0){ temp1++; delay_ms(DELAY);}
-            viewTermVar(TEMP_1);
-        
-        } else if(mode == SET_T2){
-            if (PINC.0==0){ mode = VIEW_TEMP; delay_ms(DELAY);}
-            if (PINC.1==0){ temp2--; delay_ms(DELAY);}
-            if (PINC.2==0){ temp2++; delay_ms(DELAY);} 
-            viewTermVar(TEMP_2);
-        
         }
     }
 }
