@@ -67,7 +67,7 @@ static flash unsigned char commonPins[] = {
 #define UPPER 21
 #define LOWER 22
 //delays
-#define DELAY 250
+#define DELAY 100
 
 #define ENABLE 1
 #define DISABLE 0
@@ -91,8 +91,8 @@ unsigned char mode = VIEW_TEMP;
 
 int currentTemp;
 
-int temp1=-3;
-int temp2=3;
+eeprom int temp1=-3;
+eeprom int temp2=3;
 
 bit outMode = DISABLE;
 
