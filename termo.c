@@ -63,7 +63,9 @@ static flash unsigned char commonPins[] = {
 //used symbol numbers
 #define MINUS 16
 #define SPACE 18
+#define O_SYMBOL 0
 #define F_SYMBOL 15
+#define N_SYMBOL 19
 #define UPPER 21
 #define LOWER 22
 //delays
@@ -71,10 +73,16 @@ static flash unsigned char commonPins[] = {
 
 #define ENABLE 1
 #define DISABLE 0
-//mode
+//work mode
+#define MODE_TRERMOMETER 0
+#define MODE_TRERMOSTAT 1
+
+//display_mode
 #define VIEW_TEMP 0
 #define SET_T1 1
 #define SET_T2 2
+#define DISP_ON 3
+#define DISP_OFF 4
 //display limits 
 #define TEMP_1 0
 #define TEMP_2 1
@@ -87,35 +95,51 @@ unsigned char ds18x20_devices;
 unsigned char rom_code[MAX_DS18x20][9];
 bit point = 0;
 
+unsigned char work_mode = MODE_TRERMOMETER;
+
 unsigned char mode = VIEW_TEMP;
 
 int currentTemp;
 
-eeprom int temp1=-3;
-eeprom int temp2=3;
+//eeprom int temp1=-3;
+//eeprom int temp2=3;
+
+int temp1=-3;
+int temp2=3;
+
+bit showOn = DISABLE;
+bit showOff = DISABLE;
+
 
 bit outMode = DISABLE;
+
+
 
 void viewTermVar(char showTemp);
 
 // Timer1 overflow interrupt service routine
 interrupt [TIM1_OVF] void timer1_ovf_isr(void) {
-    if(mode == VIEW_TEMP){
-        if (PINC.0==0){ mode = SET_T1;}
-    } else if(mode == SET_T1){ 
-        if (PINC.0==0){ mode = SET_T2; delay_ms(DELAY);}
-        if (PINC.1==0){ temp1--; delay_ms(DELAY);}
-        if (PINC.2==0){ temp1++; delay_ms(DELAY);}
-    } else if(mode == SET_T2){
-        if (PINC.0==0){ mode = VIEW_TEMP; delay_ms(DELAY);}
-        if (PINC.1==0){ temp2--; delay_ms(DELAY);}
-        if (PINC.2==0){ temp2++; delay_ms(DELAY);} 
+    if(work_mode == MODE_TRERMOSTAT) {
+        if(mode == VIEW_TEMP){
+            if (PINC.0==0){ mode = SET_T1;}
+            if (PINC.3==0){ work_mode = MODE_TRERMOMETER; PORTD.5 = DISABLE; showOff = ENABLE;}
+        } else if(mode == SET_T1){ 
+            if (PINC.0==0){ mode = SET_T2; delay_ms(DELAY);}
+            if (PINC.1==0){ temp1--; delay_ms(DELAY);}
+            if (PINC.2==0){ temp1++; delay_ms(DELAY);}
+        } else if(mode == SET_T2){
+            if (PINC.0==0){ mode = VIEW_TEMP; delay_ms(DELAY);}
+            if (PINC.1==0){ temp2--; delay_ms(DELAY);}
+            if (PINC.2==0){ temp2++; delay_ms(DELAY);} 
+        }
+    } else if(work_mode == MODE_TRERMOMETER){
+        if (PINC.3==0){ work_mode = MODE_TRERMOSTAT; PORTD.5 = ENABLE;  showOn = ENABLE;}
     }
 }
 
 // Timer2 overflow interrupt service routine
 interrupt [TIM2_OVF] void timer2_ovf_isr(void) {
-    PORTD=0b00000000;
+    PORTD&=0b00110000;
     PORTB=digit[digit_out[cur_dig]];
 
     if (point && cur_dig == 2) {
@@ -197,13 +221,18 @@ void view_term(void) {
 
 
 void compareTemperature(void){
-    if(outMode == ENABLE && currentTemp > temp2){
-        PORTC.3 = DISABLE;
+    if(work_mode == MODE_TRERMOSTAT) {
+        if(outMode == ENABLE && currentTemp > temp2){
+            PORTC.5 = DISABLE;
+            outMode = DISABLE;
+        }
+        if(outMode == DISABLE && currentTemp < temp1){
+            PORTC.5 = ENABLE;
+            outMode = ENABLE;
+        }
+    } else if(work_mode == MODE_TRERMOMETER) {
+        PORTC.5 = DISABLE;
         outMode = DISABLE;
-    }
-    if(outMode == DISABLE && currentTemp < temp1){
-        PORTC.3 = ENABLE;
-        outMode = ENABLE;
     }
 }
 
@@ -298,7 +327,7 @@ void main(void) {
     // TWI initialization
     // TWI disabled
     TWCR=0x00;
-    PORTC.3 = DISABLE;
+    PORTC.5 = DISABLE;
     w1_init();
 
         
@@ -340,7 +369,24 @@ void main(void) {
                         compareTemperature();
                     }
                 }
+            } 
+            if(showOn == ENABLE){
+                digit_out[0] = SPACE;
+                digit_out[1] = SPACE;
+                digit_out[2] = O_SYMBOL;
+                digit_out[3] = N_SYMBOL;
+                delay_ms(2500);
+                showOn = DISABLE;
             }
+            if(showOff == ENABLE){
+                digit_out[0] = SPACE;
+                digit_out[1] = O_SYMBOL;
+                digit_out[2] = F_SYMBOL;
+                digit_out[3] = F_SYMBOL;
+                delay_ms(2500);
+                showOff = DISABLE;
+            }
+            
         } else if(mode == SET_T1){ 
             viewTermVar(TEMP_1);
         } else if(mode == SET_T2){
