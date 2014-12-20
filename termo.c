@@ -121,19 +121,19 @@ void viewTermVar(char showTemp);
 interrupt [TIM1_OVF] void timer1_ovf_isr(void) {
     if(work_mode == MODE_TRERMOSTAT) {
         if(mode == VIEW_TEMP){
-            if (PINC.0==0){ mode = SET_T1;}
-            if (PINC.3==0){ work_mode = MODE_TRERMOMETER; PORTD.5 = DISABLE; showOff = ENABLE;}
+            if (PINC.2==0){ mode = SET_T1;}
+            if (PINC.3==0){ work_mode = MODE_TRERMOMETER; PORTC.4 = DISABLE; showOff = ENABLE;}
         } else if(mode == SET_T1){ 
-            if (PINC.0==0){ mode = SET_T2; delay_ms(DELAY);}
+            if (PINC.2==0){ mode = SET_T2; delay_ms(DELAY);}
             if (PINC.1==0){ temp1--; delay_ms(DELAY);}
-            if (PINC.2==0){ temp1++; delay_ms(DELAY);}
+            if (PINC.0==0){ temp1++; delay_ms(DELAY);}
         } else if(mode == SET_T2){
-            if (PINC.0==0){ mode = VIEW_TEMP; delay_ms(DELAY);}
+            if (PINC.2==0){ mode = VIEW_TEMP; delay_ms(DELAY);}
             if (PINC.1==0){ temp2--; delay_ms(DELAY);}
-            if (PINC.2==0){ temp2++; delay_ms(DELAY);} 
+            if (PINC.0==0){ temp2++; delay_ms(DELAY);} 
         }
     } else if(work_mode == MODE_TRERMOMETER){
-        if (PINC.3==0){ work_mode = MODE_TRERMOSTAT; PORTD.5 = ENABLE;  showOn = ENABLE;}
+        if (PINC.3==0){ work_mode = MODE_TRERMOSTAT; PORTC.4 = ENABLE;  showOn = ENABLE;}
     }
 }
 
@@ -327,6 +327,7 @@ void main(void) {
     // TWI initialization
     // TWI disabled
     TWCR=0x00;
+    PORTC.4 = DISABLE;
     PORTC.5 = DISABLE;
     w1_init();
 
@@ -370,7 +371,8 @@ void main(void) {
                     }
                 }
             } 
-            if(showOn == ENABLE){
+            if(showOn == ENABLE){ 
+            	point = DISABLE;
                 digit_out[0] = SPACE;
                 digit_out[1] = SPACE;
                 digit_out[2] = O_SYMBOL;
@@ -379,6 +381,7 @@ void main(void) {
                 showOn = DISABLE;
             }
             if(showOff == ENABLE){
+            	point = DISABLE;
                 digit_out[0] = SPACE;
                 digit_out[1] = O_SYMBOL;
                 digit_out[2] = F_SYMBOL;
