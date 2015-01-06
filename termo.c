@@ -101,11 +101,11 @@ unsigned char mode = VIEW_TEMP;
 
 int currentTemp;
 
-//eeprom int temp1=-3;
-//eeprom int temp2=3;
+eeprom int temp1=-3;
+eeprom int temp2=3;
 
-int temp1=-3;
-int temp2=3;
+//int temp1=-3;
+//int temp2=3;
 
 bit showOn = DISABLE;
 bit showOff = DISABLE;
@@ -121,19 +121,19 @@ void viewTermVar(char showTemp);
 interrupt [TIM1_OVF] void timer1_ovf_isr(void) {
     if(work_mode == MODE_TRERMOSTAT) {
         if(mode == VIEW_TEMP){
-            if (PINC.2==0){ mode = SET_T1;}
-            if (PINC.3==0){ work_mode = MODE_TRERMOMETER; PORTC.4 = DISABLE; showOff = ENABLE;}
+            if (PINC.3==0){ mode = SET_T1;}
+            if (PINC.2==0){ work_mode = MODE_TRERMOMETER; PORTC.4 = DISABLE; showOff = ENABLE;}
         } else if(mode == SET_T1){ 
-            if (PINC.2==0){ mode = SET_T2; delay_ms(DELAY);}
+            if (PINC.3==0){ mode = SET_T2; delay_ms(DELAY);}
             if (PINC.1==0){ temp1--; delay_ms(DELAY);}
             if (PINC.0==0){ temp1++; delay_ms(DELAY);}
         } else if(mode == SET_T2){
-            if (PINC.2==0){ mode = VIEW_TEMP; delay_ms(DELAY);}
+            if (PINC.3==0){ mode = VIEW_TEMP; delay_ms(DELAY);}
             if (PINC.1==0){ temp2--; delay_ms(DELAY);}
             if (PINC.0==0){ temp2++; delay_ms(DELAY);} 
         }
     } else if(work_mode == MODE_TRERMOMETER){
-        if (PINC.3==0){ work_mode = MODE_TRERMOSTAT; PORTC.4 = ENABLE;  showOn = ENABLE;}
+        if (PINC.2==0){ work_mode = MODE_TRERMOSTAT; PORTC.4 = ENABLE;  showOn = ENABLE;}
     }
 }
 
